@@ -1,0 +1,42 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Java / Maven
+spring-backend/target/
+spring-backend/src/main/resources/application-local.properties
+spring-backend/src/main/resources/application-*.local.properties
+
+# Node
+node_modules/
+dist/
+frontend/.angular/
+
+# Secrets and local deployment config
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.crt
+*.p12
+*.jks
+*.keystore
+secrets/
+deploy/secrets/
+render.yaml
+fly.toml
+railway.toml
+vercel.json
+netlify.toml
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Local run logs
+.codex-run/
+*.log

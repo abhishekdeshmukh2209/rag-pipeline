@@ -1,0 +1,259 @@
+<main class="lesson-app">
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark">R</span>
+      <div>
+        <strong>RAG Easily</strong>
+        <small>Interactive pipeline lesson</small>
+      </div>
+    </div>
+
+    <button class="status" type="button" (click)="refreshHealth()" [class.offline]="!health">
+      <span class="dot"></span>
+      {{ statusLabel }}
+    </button>
+  </header>
+
+  <section class="lesson-hero">
+    <a class="back-link" href="#" aria-label="Back to concepts">Concept lesson</a>
+    <h1>RAG (Retrieval-Augmented Generation)</h1>
+    <p>
+      Learn how RAG works step by step, from raw documents and chunks to retrieval,
+      prompt construction, and a grounded final answer.
+    </p>
+  </section>
+
+  <section class="lesson-shell">
+    <aside class="step-sidebar" aria-label="Lesson steps">
+      <div class="sidebar-title">
+        <span>Lesson Path</span>
+        <strong>{{ activeLessonIndex + 1 }}/{{ lessonSteps.length }}</strong>
+      </div>
+
+      <button
+        type="button"
+        class="step-nav"
+        *ngFor="let step of lessonSteps; let i = index"
+        [class.active]="i === activeLessonIndex"
+        [class.done]="i < activeLessonIndex"
+        [style.--step-color]="step.color"
+        (click)="selectLessonStep(i)"
+      >
+        <span class="step-dot">{{ i + 1 }}</span>
+        <span>
+          <strong>{{ step.label }}</strong>
+          <small>{{ step.description }}</small>
+        </span>
+      </button>
+    </aside>
+
+    <section class="lesson-main">
+      <div class="visual-card">
+        <div class="visual-header">
+          <div>
+            <span>{{ currentLessonStep.id }}</span>
+            <h2>{{ currentLessonStep.label }}</h2>
+          </div>
+          <div class="narration-actions">
+            <button type="button" (click)="voiceEnabled = !voiceEnabled">
+              {{ voiceEnabled ? "Voice on" : "Voice off" }}
+            </button>
+            <button type="button" (click)="stopNarration()" [disabled]="!loading">Stop</button>
+            <button class="primary" type="button" (click)="runDemo()" [disabled]="loading">
+              {{ loading ? "Narrating" : "Run Pipeline" }}
+            </button>
+          </div>
+        </div>
+
+        <section class="guide-card" [class.speaking]="speaking" aria-live="polite">
+          <div class="boy-guide" [class.speaking]="speaking" [ngClass]="'action-' + guideAction" aria-hidden="true">
+            <span class="hair"></span>
+            <span class="head">
+              <span class="ear left"></span>
+              <span class="ear right"></span>
+              <span class="eye left"></span>
+              <span class="eye right"></span>
+              <span class="nose"></span>
+              <span class="mouth"></span>
+            </span>
+            <span class="neck"></span>
+            <span class="body">
+              <span class="shirt-collar"></span>
+              <span class="badge">R</span>
+            </span>
+            <span class="arm left"></span>
+            <span class="arm right"></span>
+            <span class="hand left-hand"></span>
+            <span class="hand pointer"></span>
+            <span class="leg left"></span>
+            <span class="leg right"></span>
+            <span class="shoe left"></span>
+            <span class="shoe right"></span>
+          </div>
+          <div class="speech-bubble">
+            <span>{{ speaking ? "Reading this step" : loading ? "Explaining" : "Guide ready" }}</span>
+            <p>{{ currentNarration }}</p>
+          </div>
+        </section>
+
+        <div class="pipeline-visual space-map" [style.--active-color]="currentLessonStep.color">
+          <span class="stars layer-one"></span>
+          <span class="stars layer-two"></span>
+          <svg class="space-path" viewBox="0 0 1000 430" preserveAspectRatio="none" aria-hidden="true">
+            <path class="path-shadow" d="M55 360 C180 250 230 290 315 210 S510 170 575 115 S735 120 910 36" />
+            <path class="path-glow" d="M55 360 C180 250 230 290 315 210 S510 170 575 115 S735 120 910 36" />
+          </svg>
+          <span class="space-ship" [style.offset-distance.%]="progressPercent">
+            <span class="ship-window"></span>
+          </span>
+
+          <article
+            class="space-station"
+            *ngFor="let step of lessonSteps; let i = index"
+            [class.active]="i === activeLessonIndex"
+            [class.done]="i < activeLessonIndex"
+            [style.--step-color]="step.color"
+          >
+            <span class="station-platform"></span>
+            <strong>{{ step.label }}</strong>
+          </article>
+        </div>
+
+        <div class="step-demo-grid">
+          <article class="demo-panel" [ngSwitch]="currentLessonStep.id">
+            <ng-container *ngSwitchCase="'input'">
+              <div class="panel-row">
+                <strong>Java backend sources</strong>
+                <span>{{ sources.length }} files</span>
+              </div>
+              <div class="source-stack" *ngIf="sources.length; else loadingSources">
+                <div class="source-pill" *ngFor="let source of sources">
+                  <span>{{ source.source }}</span>
+                  <strong>{{ source.chunk_count }} chunks</strong>
+                </div>
+              </div>
+              <ng-template #loadingSources>
+                <p class="muted">Waiting for Spring /sources.</p>
+              </ng-template>
+            </ng-container>
+
+            <ng-container *ngSwitchCase="'chunking'">
+              <div class="panel-row">
+                <strong>Chunks generated</strong>
+                <span>{{ sourceChunkTotal || health?.chunks_indexed || 0 }}</span>
+              </div>
+              <p class="muted">Each markdown file becomes small cards. Overlap helps keep ideas from being split apart.</p>
+            </ng-container>
+
+            <ng-container *ngSwitchCase="'embedding'">
+              <div class="vector-bars" aria-label="Embedding sample">
+                <span *ngFor="let bar of [45, 70, 28, 82, 36, 62, 50, 76, 31, 58]" [style.height.%]="bar"></span>
+              </div>
+              <p class="muted">TF-IDF turns words into numeric signals so chunks can be compared locally.</p>
+            </ng-container>
+
+            <ng-container *ngSwitchCase="'vectordb'">
+              <div class="metric-grid">
+                <div>
+                  <strong>{{ health?.chunks_indexed ?? 0 }}</strong>
+                  <span>vectors indexed</span>
+                </div>
+                <div>
+                  <strong>TF-IDF</strong>
+                  <span>local index</span>
+                </div>
+              </div>
+            </ng-container>
+
+            <ng-container *ngSwitchCase="'query'">
+              <p class="query-quote">"{{ question }}"</p>
+              <p class="muted">The visitor asks in plain language. The backend compares it with indexed chunks.</p>
+            </ng-container>
+
+            <ng-container *ngSwitchCase="'retrieval'">
+              <div class="rank-list" *ngIf="result?.context?.length; else noRanks">
+                <div *ngFor="let ctx of result?.context; let i = index">
+                  <span>#{{ i + 1 }}</span>
+                  <strong>{{ ctx.source }}</strong>
+                </div>
+              </div>
+              <ng-template #noRanks>
+                <p class="muted">Run the pipeline to see top evidence chunks ranked here.</p>
+              </ng-template>
+            </ng-container>
+
+            <ng-container *ngSwitchCase="'prompt'">
+              <pre>CONTEXT:
+{{ result?.context?.[0]?.snippet || "Retrieved chunks will be inserted here." }}
+
+QUESTION:
+{{ question }}</pre>
+            </ng-container>
+
+            <ng-container *ngSwitchDefault>
+              <p class="answer-preview">
+                {{ result?.answer || "Run the pipeline to generate a grounded answer from retrieved context." }}
+              </p>
+            </ng-container>
+          </article>
+
+          <article class="explain-panel">
+            <h3>How it works</h3>
+            <p>{{ currentLessonStep.educationalText }}</p>
+            <div class="example-box">
+              <strong>Example</strong>
+              <p>{{ exampleForStep(currentLessonStep) }}</p>
+            </div>
+            <details>
+              <summary>Deep Dive</summary>
+              <p>{{ currentLessonStep.deepDiveText }}</p>
+            </details>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <aside class="live-panel">
+      <form class="query-card" (ngSubmit)="runDemo()">
+        <div class="panel-row">
+          <strong>Live Query</strong>
+          <span>Spring Boot</span>
+        </div>
+        <textarea
+          name="question"
+          [(ngModel)]="question"
+          rows="5"
+          placeholder="Ask about RAG, chunking, retrieval, or grounding"
+        ></textarea>
+        <div class="sample-list">
+          <button type="button" *ngFor="let sample of sampleQuestions" (click)="useSample(sample)">
+            {{ sample }}
+          </button>
+        </div>
+        <button class="primary full" type="submit" [disabled]="loading || question.trim().length < 4">
+          {{ loading ? "Narrating pipeline" : "Ask Java backend" }}
+        </button>
+      </form>
+
+      <section class="answer-card">
+        <div class="panel-row">
+          <strong>Generated Answer</strong>
+          <span>{{ result?.context?.length ?? 0 }} sources</span>
+        </div>
+        <p>{{ result?.answer || "Run a query to see the grounded answer." }}</p>
+      </section>
+
+      <section class="evidence-card">
+        <div class="panel-row">
+          <strong>Retrieved Context</strong>
+          <span>{{ result?.context?.length ?? 0 }} chunks</span>
+        </div>
+        <article class="context" *ngFor="let ctx of result?.context">
+          <strong>{{ ctx.source }}</strong>
+          <p>{{ ctx.snippet }}</p>
+        </article>
+        <p class="muted" *ngIf="!result?.context?.length">Evidence cards appear after retrieval.</p>
+      </section>
+    </aside>
+  </section>
+</main>
