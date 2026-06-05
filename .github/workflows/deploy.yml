@@ -39,11 +39,34 @@ jobs:
           npm run build
 
       - name: Configure SSH
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_PORT: ${{ secrets.SSH_PORT }}
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
         run: |
+          set -euo pipefail
+          : "${SSH_HOST:?Missing GitHub secret SSH_HOST}"
+          : "${SSH_PORT:?Missing GitHub secret SSH_PORT}"
+          : "${SSH_PRIVATE_KEY:?Missing GitHub secret SSH_PRIVATE_KEY}"
+
           mkdir -p ~/.ssh
-          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/deploy_key
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -p "${{ secrets.SSH_PORT }}" "${{ secrets.SSH_HOST }}" >> ~/.ssh/known_hosts
+
+          echo "Checking SSH host key for configured host and port..."
+          if ! ssh-keyscan -T 20 -p "$SSH_PORT" -H "$SSH_HOST" >> ~/.ssh/known_hosts; then
+            echo "Could not reach SSH_HOST on SSH_PORT. Check DNS/IP, firewall, and that sshd is listening on this port."
+            exit 1
+          fi
+
+      - name: Test SSH connection
+        run: |
+          ssh -i ~/.ssh/deploy_key \
+            -p "${{ secrets.SSH_PORT }}" \
+            -o BatchMode=yes \
+            -o StrictHostKeyChecking=yes \
+            "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" \
+            "echo SSH connection OK"
 
       - name: Upload deployment artifacts
         run: |
@@ -73,4 +96,3 @@ jobs:
             sudo nginx -t
             sudo systemctl reload nginx
           EOF
-
