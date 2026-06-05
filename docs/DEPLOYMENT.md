@@ -71,44 +71,91 @@ Spring listens only on the server. Do not open port `8080` in your public firewa
 
 ## 4. Configure Nginx
 
-Create `/etc/nginx/sites-available/rag-pipeline`:
+Use this idempotent setup. It can be run more than once.
 
-```nginx
+```bash
+APP_DOMAIN="ragpipeline.exaultlabs.com"
+APP_ROOT="/var/www/rag-pipeline"
+NGINX_SITE="/etc/nginx/sites-available/rag-pipeline"
+NGINX_ENABLED="/etc/nginx/sites-enabled/rag-pipeline"
+
+sudo mkdir -p "$APP_ROOT"
+
+sudo tee "$NGINX_SITE" > /dev/null <<EOF
 server {
   listen 80;
-  server_name ragpipeline.exaultlabs.com;
+  server_name $APP_DOMAIN;
 
-  root /var/www/rag-pipeline;
+  root $APP_ROOT;
   index index.html;
 
   location / {
-    try_files $uri $uri/ /index.html;
+    try_files \$uri \$uri/ /index.html;
   }
 
   location /api/ {
     proxy_pass http://127.0.0.1:8080/;
-    proxy_set_header Host $host;
-    proxy_set_header X-Real-IP $remote_addr;
-    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header Host \$host;
+    proxy_set_header X-Real-IP \$remote_addr;
+    proxy_set_header X-Forwarded-For \$proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto \$scheme;
   }
 }
-```
+EOF
 
-Enable it:
+if [ ! -L "$NGINX_ENABLED" ]; then
+  sudo ln -s "$NGINX_SITE" "$NGINX_ENABLED"
+fi
 
-```bash
-sudo ln -s /etc/nginx/sites-available/rag-pipeline /etc/nginx/sites-enabled/rag-pipeline
 sudo nginx -t
 sudo systemctl reload nginx
 ```
 
-## 5. Add HTTPS
+This keeps the backend private. The only public hostname is `ragpipeline.exaultlabs.com`; requests to `/api/*` are forwarded inside the server to `127.0.0.1:8080`.
+
+## 5. Add HTTPS Certificate
+
+Install Certbot:
 
 ```bash
 sudo apt install -y certbot python3-certbot-nginx
-sudo certbot --nginx -d ragpipeline.exaultlabs.com
 ```
+
+Generate the certificate only if it does not already exist:
+
+```bash
+APP_DOMAIN="ragpipeline.exaultlabs.com"
+CERT_PATH="/etc/letsencrypt/live/$APP_DOMAIN/fullchain.pem"
+
+if sudo test -f "$CERT_PATH"; then
+  echo "Certificate already exists for $APP_DOMAIN. Not replacing it."
+else
+  sudo certbot --nginx \
+    -d "$APP_DOMAIN" \
+    --non-interactive \
+    --agree-tos \
+    --register-unsafely-without-email \
+    --redirect
+fi
+
+sudo nginx -t
+sudo systemctl reload nginx
+```
+
+Check renewal is enabled:
+
+```bash
+sudo systemctl list-timers | grep certbot
+sudo certbot renew --dry-run
+```
+
+Certbot stores certificates under:
+
+```text
+/etc/letsencrypt/live/ragpipeline.exaultlabs.com/
+```
+
+Do not copy these certificates into GitHub or the repository.
 
 ## 6. Add GitHub Actions Secrets
 
@@ -145,4 +192,3 @@ The workflow in `.github/workflows/deploy.yml` runs on each push to `main`. It:
 4. Confirm narration finishes each step before advancing.
 5. Ask: `How does a RAG pipeline reduce hallucinations?`
 6. Confirm the answer includes retrieved context and sources.
-
