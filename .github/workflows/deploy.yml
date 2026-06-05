@@ -93,14 +93,14 @@ jobs:
           CERT_PATH="/etc/letsencrypt/live/$APP_DOMAIN/fullchain.pem"
           KEY_PATH="/etc/letsencrypt/live/$APP_DOMAIN/privkey.pem"
 
-          sudo mkdir -p /opt/rag-pipeline/backend
-          sudo mkdir -p "$APP_ROOT"
+          sudo -n mkdir -p /opt/rag-pipeline/backend
+          sudo -n mkdir -p "$APP_ROOT"
 
-          sudo cp /tmp/rag-pipeline-deploy/rag-pipeline-spring.jar /opt/rag-pipeline/backend/rag-pipeline-spring.jar
-          sudo rsync -az --delete /tmp/rag-pipeline-deploy/frontend/ "$APP_ROOT/"
+          sudo -n cp /tmp/rag-pipeline-deploy/rag-pipeline-spring.jar /opt/rag-pipeline/backend/rag-pipeline-spring.jar
+          sudo -n rsync -az --delete /tmp/rag-pipeline-deploy/frontend/ "$APP_ROOT/"
 
           write_http_config() {
-          sudo tee "$NGINX_SITE" > /dev/null <<NGINX
+          sudo -n tee "$NGINX_SITE" > /dev/null <<NGINX
           server {
             listen 80;
             server_name $APP_DOMAIN;
@@ -124,7 +124,7 @@ jobs:
           }
 
           write_https_config() {
-          sudo tee "$NGINX_SITE" > /dev/null <<NGINX
+          sudo -n tee "$NGINX_SITE" > /dev/null <<NGINX
           server {
             listen 80;
             server_name $APP_DOMAIN;
@@ -156,7 +156,7 @@ jobs:
           NGINX
           }
 
-          if sudo test -f "$CERT_PATH" && sudo test -f "$KEY_PATH"; then
+          if sudo -n test -f "$CERT_PATH" && sudo -n test -f "$KEY_PATH"; then
             echo "Existing TLS certificate found for $APP_DOMAIN. Keeping it and writing HTTPS Nginx config."
             write_https_config
           else
@@ -165,19 +165,19 @@ jobs:
           fi
 
           if [ ! -L "$NGINX_ENABLED" ]; then
-            sudo ln -s "$NGINX_SITE" "$NGINX_ENABLED"
+            sudo -n ln -s "$NGINX_SITE" "$NGINX_ENABLED"
           fi
 
-          sudo nginx -t
-          sudo systemctl reload nginx
+          sudo -n nginx -t
+          sudo -n systemctl reload nginx
 
-          if ! sudo test -f "$CERT_PATH"; then
+          if ! sudo -n test -f "$CERT_PATH"; then
             if ! command -v certbot >/dev/null 2>&1; then
-              sudo apt-get update
-              sudo apt-get install -y certbot python3-certbot-nginx
+              sudo -n apt-get update
+              sudo -n apt-get install -y certbot python3-certbot-nginx
             fi
 
-            sudo certbot --nginx \
+            sudo -n certbot --nginx \
               -d "$APP_DOMAIN" \
               --non-interactive \
               --agree-tos \
@@ -185,13 +185,13 @@ jobs:
               --redirect
 
             write_https_config
-            sudo nginx -t
-            sudo systemctl reload nginx
+            sudo -n nginx -t
+            sudo -n systemctl reload nginx
           else
             echo "Certificate already exists for $APP_DOMAIN. Not replacing it."
           fi
 
-          sudo systemctl restart rag-pipeline
-          sudo nginx -t
-          sudo systemctl reload nginx
+          sudo -n systemctl restart rag-pipeline
+          sudo -n nginx -t
+          sudo -n systemctl reload nginx
           EOF

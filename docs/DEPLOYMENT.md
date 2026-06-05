@@ -69,7 +69,37 @@ sudo systemctl enable rag-pipeline
 
 Spring listens only on the server. Do not open port `8080` in your public firewall.
 
-## 4. Configure Nginx
+## 4. Allow Deployment Sudo
+
+GitHub Actions connects over SSH as `opsadmin`. It cannot type a sudo password, so the deployment user needs passwordless sudo for the small set of commands used by the workflow.
+
+Run this once on the server:
+
+```bash
+sudo tee /etc/sudoers.d/rag-pipeline-deploy > /dev/null <<'EOF'
+opsadmin ALL=(root) NOPASSWD: /usr/bin/mkdir, /usr/bin/cp, /usr/bin/rsync, /usr/bin/tee, /usr/bin/ln, /usr/bin/test, /usr/sbin/nginx, /usr/bin/systemctl, /usr/bin/apt-get, /usr/bin/certbot
+EOF
+
+sudo chmod 440 /etc/sudoers.d/rag-pipeline-deploy
+sudo visudo -cf /etc/sudoers.d/rag-pipeline-deploy
+```
+
+If any command path differs on your server, check it with:
+
+```bash
+which mkdir cp rsync tee ln test nginx systemctl apt-get certbot
+```
+
+Then update `/etc/sudoers.d/rag-pipeline-deploy` with the actual path.
+
+Verify non-interactive sudo works:
+
+```bash
+sudo -n nginx -t
+sudo -n systemctl status nginx --no-pager
+```
+
+## 5. Configure Nginx
 
 Use this idempotent setup. It can be run more than once.
 
@@ -113,7 +143,7 @@ sudo systemctl reload nginx
 
 This keeps the backend private. The only public hostname is `ragpipeline.exaultlabs.com`; requests to `/api/*` are forwarded inside the server to `127.0.0.1:8080`.
 
-## 5. Add HTTPS Certificate
+## 6. Add HTTPS Certificate
 
 Install Certbot:
 
@@ -157,7 +187,7 @@ Certbot stores certificates under:
 
 Do not copy these certificates into GitHub or the repository.
 
-## 6. Add GitHub Actions Secrets
+## 7. Add GitHub Actions Secrets
 
 Open:
 
@@ -174,7 +204,7 @@ Add:
 
 Do not commit these values.
 
-## 7. Deploy
+## 8. Deploy
 
 The workflow in `.github/workflows/deploy.yml` runs on each push to `main`. It:
 
